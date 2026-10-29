@@ -1,54 +1,135 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8">
-<title>Services at UBC</title>
-<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
-<style> body { margin: 0; } #map { position: absolute; inset: 0; } </style>
-</head>
-<body>
-<div id="map"></div>
-<script>
-const map = new maplibregl.Map({
-container: 'map',
-style: 'https://tiles.openfreemap.org/styles/liberty',        // the file you downloaded from Maputnik
-center: [-123.25, 49.26],    // longitude, latitude
-zoom: 12
-});
-const url = 'https://babooneatbanana.github.io/babooneatbanana-filtering-maplibre/ubcv_poi.geojson'
-map.on('load', function () {
-map.addSource('POI', {
-    type: 'geojson',
-    data: url,
-    attribution: 'Places of interest'
-  });
-map.addLayer({
-    id: 'SERVICE_TYPE',
-    type: 'circle',
-    source: 'POI',
-    paint: POImarker
-  });
-});
-const POImarker = {
-'circle-radius': ['interpolate', ['linear'], ['zoom'],
-11, 2, 17, 6],
-'circle-color': ['match', ['get', 'SERVICE_TYPE'],
-    'child_care', '#0000ff', 'cafe', '#ff0000', 'restaurant', '#ff0000', 'grocery', '#ff0000', 'commercial_services', 
-    '#f79b07', 'retail', '#f79b07', 'garden', '#00ff00', 'park', '#00ff00', 'field', '#00ff00', 'library', 
-    '#f7f307', 'academic', '#f7f307', 'athletics', '#9b07f7', 'campus_services', '#07f7df', 'medical', '#07f7df',
-    'housing_student', '#07f7df', '#999999'],
-'circle-opacity': 0.6
-};
-map.on('click', 'SERVICE_TYPE', onEachPOI);
-function onEachPOI(e) {
-const SERVICE = e.features[0].properties;
-const popup = new maplibregl.Popup();
-popup.setLngLat(e.lngLat)
-popup.setText(SERVICE.SERVICE_TYPE);
-popup.addTo(map);
-}
-map.addControl(new maplibregl.NavigationControl());
-</script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <title>Filter places of interest</title>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.15.0/dist/maplibre-gl.css"
+    />
+  </head>
+
+  <body>
+
+    <div id="mapid" style="width: 600px; height: 400px;"></div>
+
+    <div id="controls" style="margin: 10px;">
+      <button id="showAllPOI">Show Places of Interest</button>
+
+      <span style="display: inline-block; width: 0px;"></span>
+      
+      <button id="showServiceTypes">Show Services</button>
+      <input type="text" id="highlightPOITextEntry" placeholder="search lowercase e.g. cafe" />
+      <button id="highlightPOIButton">Highlight</button>
+
+    </div>
+
+    <script type="module">
+
+            import * as maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@6.15.0/dist/maplibre-gl.mjs';
+
+            const map = new maplibregl.Map({
+              container: 'mapid',
+              center: [-123.256113, 49.265637],
+              zoom: 15,
+              style: 'https://tiles.openfreemap.org/styles/positron'
+            });
+      
+            window.map = map;
+
+            const url =
+      'https://babooneatbanana.github.io/babooneatbanana-filtering-maplibre/ubcv_poi.geojson'
+
+            const POIMarkerPaint = {
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 17, 6],
+              'circle-color': '#999999',
+              'circle-opacity': 0.6
+            };
+
+            function onEachPOI(e) {
+              const POI = e.features[0].properties;
+              if (POI.SERVICE_TYPE === highlightPOITextEntry) {
+                const popup = new maplibregl.Popup();
+                popup.setLngLat(e.lngLat);
+                popup.setText(POI.SERVICE_TYPE);
+                popup.addTo(map);
+              }
+            }
+
+            function addPOI() {
+              if (map.getSource('POI')) {
+                return;   // don't add trees twice
+              }
+              map.addSource('POI', {
+                type: 'geojson',
+                data: url,
+                attribution: 'UBC Campus Places of Interest, UBCGeodata'
+              });
+
+              map.addLayer({
+                id: 'POI-circles',
+                type: 'circle',
+                source: 'POI',
+                paint: POIMarkerPaint
+              });
+
+              map.on('click', 'POI-circles', onEachPOI);
+              map.on('mousemove', 'POI-circles', hoverPOI);
+              map.on('mouseleave', 'POI-circles', leavePOI);
+            }
+
+            // Show All Trees: draw every tree.
+            function showAllPOI() {
+              console.log('got to beginning of showAllPOI');
+              addPOI();
+
+              map.setFilter('POI-circles', null);
+              map.setPaintProperty('POI-circles', 'circle-color', POIMarkerPaint['circle-color']);
+              map.setPaintProperty('POI-circles', 'circle-opacity', POIMarkerPaint['circle-opacity']);
+            }
+
+            const hoverPopup = new maplibregl.Popup({ closeButton: false });
+
+            function hoverPOI(e) {
+              const POI = e.features[0].properties;
+              if (POI.SERVICE_TYPE) {
+                hoverPopup.setLngLat(e.features[0].geometry.coordinates);
+                hoverPopup.setText(POI.SERVICE_TYPE);
+                hoverPopup.addTo(map);
+              } else {
+                hoverPopup.remove();
+              }
+            }
+
+            function leavePOI() {
+              hoverPopup.remove();
+            }
+
+            function highlightPOI() {
+              console.log('got to beginning of highlightPOI');
+              addPOI();
+              const textEntry = document.getElementById('highlightPOITextEntry');
+              const ServiceTypeToHighlight = textEntry.value;
+              if (ServiceTypeToHighlight === '') {
+                showAllPOI();
+                return;
+              }
+              map.setFilter('POI-circles', null);
+              const matches = ['in', ServiceTypeToHighlight, ['get', 'SERVICE_TYPE']];
+              map.setPaintProperty('POI-circles', 'circle-color', ['case', matches, '#ff7f00', '#bbbbbb']);
+              map.setPaintProperty('POI-circles', 'circle-opacity', ['case', matches, 0.9, 0.3]);
+            }
+
+            map.on('load', function () {
+              console.log('map has loaded');
+              const showAllButton = document.getElementById('showAllPOI');
+              console.log(showAllButton);
+              showAllButton.addEventListener('click', showAllPOI);
+              const highlightButton = document.getElementById('highlightPOIButton');
+              highlightButton.addEventListener('click', highlightPOI);
+              console.log('listeners assigned');
+            });
+    </script>
+  </body>
 </html>
