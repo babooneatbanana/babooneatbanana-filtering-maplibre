@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Services at UBC</title>
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<style> body { margin: 0; } #map { position: absolute; inset: 0; } </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+const map = new maplibregl.Map({
+container: 'map',
+style: 'https://tiles.openfreemap.org/styles/liberty',        // the file you downloaded from Maputnik
+center: [-123.25, 49.26],    // longitude, latitude
+zoom: 12
+});
+const url = 'https://babooneatbanana.github.io/babooneatbanana-UBC-maplibre/ubcv_poi.geojson'
+map.on('load', function () {
+map.addSource('POI', {
+    type: 'geojson',
+    data: url,
+    attribution: 'Places of interest'
+  });
+map.addLayer({
+    id: 'SERVICE_TYPE',
+    type: 'circle',
+    source: 'POI',
+    paint: POImarker
+  });
+});
+const POImarker = {
+'circle-radius': ['interpolate', ['linear'], ['zoom'],
+11, 2, 17, 6],
+'circle-color': ['match', ['get', 'SERVICE_TYPE'],
+    'child_care', '#0000ff', 'cafe', '#ff0000', 'restaurant', '#ff0000', 'grocery', '#ff0000', 'commercial_services', 
+    '#f79b07', 'retail', '#f79b07', 'garden', '#00ff00', 'park', '#00ff00', 'field', '#00ff00', 'library', 
+    '#f7f307', 'academic', '#f7f307', 'athletics', '#9b07f7', 'campus_services', '#07f7df', 'medical', '#07f7df',
+    'housing_student', '#07f7df', '#999999'],
+'circle-opacity': 0.6
+};
+map.on('click', 'SERVICE_TYPE', onEachPOI);
+function onEachPOI(e) {
+const SERVICE = e.features[0].properties;
+const popup = new maplibregl.Popup();
+popup.setLngLat(e.lngLat)
+popup.setText(SERVICE.SERVICE_TYPE);
+popup.addTo(map);
+}
+map.addControl(new maplibregl.NavigationControl());
+</script>
+</body>
+</html>
